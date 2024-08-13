@@ -70,7 +70,7 @@ yacc_sql.y中需要增加calc_stmt，calc_stmt的类型，以及calc_stmt的解�
 
 在语法解析结束后，输出了`CalcSqlNode`，后面resolver阶段，将它转换为Stmt，这里就是新增`CalcStmt`。通常在resolver阶段会校验SQL语法树的合法性，比如查询的表是否存在，运算类型是否正确。在`CalcStmt`中，逻辑比较简单，没有做任何校验，只是将表达式记录下来，并且认为这里的表达式都是值类型的计算。
 
-在Transformer和Optmize阶段，对于查询类型的SQL会生成LogicalOperator和PhysicalOperator，而对于命令执行类型的SQL会生成CommandExecutor。CALC是查询类型的SQL，参考SELECT的实现，在SELECT中，有PROJECT、TABLE_SCAN等类型的算子，而CALC比较简单，我们新增`CalcLogicalOperator`和`CalcPhysicalOperator`。
+在Transformer和Optimize阶段，对于查询类型的SQL会生成LogicalOperator和PhysicalOperator，而对于命令执行类型的SQL会生成CommandExecutor。CALC是查询类型的SQL，参考SELECT的实现，在SELECT中，有PROJECT、TABLE_SCAN等类型的算子，而CALC比较简单，我们新增`CalcLogicalOperator`和`CalcPhysicalOperator`。
 
 由于具有执行计划的SQL，在Executor阶段，我们仅需要给SqlResult设置对应的TupleSchema即可，可以参考`ExecuteStage::handle_request_with_physical_operator`。
 
