@@ -10,7 +10,7 @@ title: Drop table 实现解析
 
 drop table 与create table相反，要清理掉所有创建表和表相关联的资源，比如描述表的文件、数据文件以及索引等相关数据和文件。
 
-sql流转到default_storge阶段的时候，在处理sql的函数中，新增一个drop_table的case。
+sql流转到default_storage阶段的时候，在处理sql的函数中，新增一个drop_table的case。
 
 drop table就是删除表，在`create table t`时，会新建一个t.table文件，同时为了存储数据也会新建一个t.data文件存储下来。同时创建索引的时候，也会创建记录索引数据的文件，在删除表时也要一起删除掉。
 

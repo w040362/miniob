@@ -161,6 +161,30 @@ RC Db::create_table(const char *table_name, span<const AttrInfoSqlNode> attribut
   return RC::SUCCESS;
 }
 
+RC Db::drop_table(const char *table_name)
+{
+  RC rc = RC::SUCCESS;
+
+  auto it = opened_tables_.find(table_name);
+  if (it == opened_tables_.end())
+  {
+    LOG_WARN("table : %s not exist", table_name);
+    return RC::SCHEMA_TABLE_NOT_EXIST;
+  }
+  Table* table = it->second;
+  if (table == nullptr) {
+    LOG_WARN("table : %s not exist", table_name);
+    return RC::SCHEMA_TABLE_NOT_EXIST;
+  }
+
+  rc = table->destroy(path_.c_str()); // 让表自己销毁资源
+  if(rc != RC::SUCCESS) return rc;
+
+  opened_tables_.erase(it); // 删除成功的话，从表list中将它删除
+  delete table;
+  return rc;
+}
+
 Table *Db::find_table(const char *table_name) const
 {
   unordered_map<string, Table *>::const_iterator iter = opened_tables_.find(table_name);
