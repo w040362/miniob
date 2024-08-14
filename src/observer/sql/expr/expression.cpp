@@ -229,6 +229,8 @@ RC ComparisonExpr::eval(Chunk &chunk, std::vector<uint8_t> &select)
     rc = compare_column<int>(left_column, right_column, select);
   } else if (left_column.attr_type() == AttrType::FLOATS) {
     rc = compare_column<float>(left_column, right_column, select);
+  } else if (left_column.attr_type() == AttrType::DATES) {
+    rc = compare_column<int>(left_column, right_column, select);
   } else {
     // TODO: support string compare
     LOG_WARN("unsupported data type %d", left_column.attr_type());
@@ -319,6 +321,14 @@ AttrType ArithmeticExpr::value_type() const
       arithmetic_type_ != Type::DIV) {
     return AttrType::INTS;
   }
+  /* todo: DATES
+  else if (left_->value_type() == AttrType::DATES && right_->value_type() == AttrType::INTS ||
+             left_->value_type() == AttrType::INTS && right_->value_type() == AttrType::DATES) {
+    if (arithmetic_type_ != Type::DIV && arithmetic_type_ != Type::MUL) {
+      return AttrType::DATES;
+    }
+  }
+  */
 
   return AttrType::FLOATS;
 }
@@ -333,7 +343,9 @@ RC ArithmeticExpr::calc_value(const Value &left_value, const Value &right_value,
     case Type::ADD: {
       if (target_type == AttrType::INTS) {
         value.set_int(left_value.get_int() + right_value.get_int());
-      } else {
+      } 
+      // todo: DATES, else if (target_type == AttrType::DATES) {} 
+      else {
         value.set_float(left_value.get_float() + right_value.get_float());
       }
     } break;

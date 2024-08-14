@@ -16,13 +16,15 @@ See the Mulan PSL v2 for more details. */
 #include "common/lang/comparator.h"
 #include "common/lang/string.h"
 #include "common/log/log.h"
+#include "common/time/date.h"
 #include <sstream>
+#include "value.h"
 
-const char *ATTR_TYPE_NAME[] = {"undefined", "chars", "ints", "floats", "booleans"};
+const char *ATTR_TYPE_NAME[] = {"undefined", "chars", "ints", "floats", "dates", "booleans"};
 
 const char *attr_type_to_string(AttrType type)
 {
-  if (type >= AttrType::UNDEFINED && type <= AttrType::FLOATS) {
+  if (type >= AttrType::UNDEFINED && type <= AttrType::DATES) {
     return ATTR_TYPE_NAME[static_cast<int>(type)];
   }
   return "unknown";
@@ -63,6 +65,10 @@ void Value::set_data(char *data, int length)
       num_value_.bool_value_ = *(int *)data != 0;
       length_                = length;
     } break;
+    case AttrType::DATES: {
+      num_value_.int_value_ = *(int *)data;
+      length_ = length;
+    } break;
     default: {
       LOG_WARN("unknown data type: %d", attr_type_);
     } break;
@@ -98,6 +104,11 @@ void Value::set_string(const char *s, int len /*= 0*/)
   }
   length_ = str_value_.length();
 }
+void Value::set_date(int val) {
+  attr_type_ = AttrType::DATES;
+  num_value_.int_value_ = val;
+  length_ = sizeof(val);
+}
 
 void Value::set_value(const Value &value)
 {
@@ -110,6 +121,9 @@ void Value::set_value(const Value &value)
     } break;
     case AttrType::CHARS: {
       set_string(value.get_string().c_str());
+    } break;
+    case AttrType::DATES: {
+      set_date(value.get_int());
     } break;
     case AttrType::BOOLEANS: {
       set_boolean(value.get_boolean());
@@ -148,6 +162,9 @@ std::string Value::to_string() const
     case AttrType::CHARS: {
       os << str_value_;
     } break;
+    case AttrType::DATES: {
+      os << date_to_string(num_value_.int_value_);
+    } break;
     default: {
       LOG_WARN("unsupported attr type: %d", attr_type_);
     } break;
@@ -173,7 +190,10 @@ int Value::compare(const Value &other) const
       } break;
       case AttrType::BOOLEANS: {
         return common::compare_int((void *)&this->num_value_.bool_value_, (void *)&other.num_value_.bool_value_);
-      }
+      } break;
+      case AttrType::DATES: {
+        return common::compare_int((void *)&this->num_value_.int_value_, (void *)&other.num_value_.int_value_);
+      } break;
       default: {
         LOG_WARN("unsupported type: %d", this->attr_type_);
       }
@@ -208,7 +228,10 @@ int Value::get_int() const
     }
     case AttrType::BOOLEANS: {
       return (int)(num_value_.bool_value_);
-    }
+    } break;
+    case AttrType::DATES: {
+      return (int)(num_value_.int_value_);
+    } break;
     default: {
       LOG_WARN("unknown data type. type=%d", attr_type_);
       return 0;

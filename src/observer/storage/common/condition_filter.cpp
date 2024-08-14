@@ -38,7 +38,7 @@ DefaultConditionFilter::~DefaultConditionFilter() {}
 
 RC DefaultConditionFilter::init(const ConDesc &left, const ConDesc &right, AttrType attr_type, CompOp comp_op)
 {
-  if (attr_type < AttrType::CHARS || attr_type > AttrType::FLOATS) {
+  if (attr_type < AttrType::CHARS || attr_type > AttrType::DATES) {
     LOG_ERROR("Invalid condition with unsupported attribute type: %d", attr_type);
     return RC::INVALID_ARGUMENT;
   }
