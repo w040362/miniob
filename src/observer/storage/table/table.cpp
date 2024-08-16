@@ -267,6 +267,12 @@ RC Table::make_record(int value_num, const Value *values, Record &record)
   for (int i = 0; i < value_num; i++) {
     const FieldMeta *field = table_meta_.field(i + normal_field_start_index);
     const Value     &value = values[i];
+    if (value.is_null() && !field->nullable()) {
+      // 向not null列中插入null
+      LOG_ERROR("Invalid value type. table name =%s, field name=%s, null value not allowed",
+                table_meta_.name(), field->name());
+      return RC::INSERT_NULL_ERROR;
+    }
     if (field->type() != value.attr_type()) {
       LOG_ERROR("Invalid value type. table name =%s, field name=%s, type=%d, but given=%d",
                 table_meta_.name(), field->name(), field->type(), value.attr_type());
@@ -278,10 +284,22 @@ RC Table::make_record(int value_num, const Value *values, Record &record)
   int   record_size = table_meta_.record_size();
   char *record_data = (char *)malloc(record_size);
 
+  const FieldMeta* null_field = table_meta_.get_null_field();
+  // 开辟一块区域记录各个字段的null情况，在行地址头部  0~field_num()
+  common::Bitmap null_bitmap(record_data + null_field->offset(), table_meta_.field_num());
+  null_bitmap.clear_bits();
+
+  // normal_field_start_index 之前记录的是事务和系统记录相关的field
   for (int i = 0; i < value_num; i++) {
     const FieldMeta *field    = table_meta_.field(i + normal_field_start_index);
     const Value     &value    = values[i];
     size_t           copy_len = field->len();
+    // todo 插入null字段的处理
+    if (value.is_null()) {
+      // null 值的 data 部分的数据是未定义的, set_bit = 1
+      null_bitmap.set_bit(normal_field_start_index + i);
+      continue;
+    }
     if (field->type() == AttrType::CHARS) {
       const size_t data_len = value.length();
       if (copy_len > data_len) {

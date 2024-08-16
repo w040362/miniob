@@ -53,6 +53,12 @@ bool Bitmap::get_bit(int index)
   return (bits & (1 << (index % 8))) != 0;
 }
 
+bool Bitmap::get_bit(int index) const
+{
+  char bits = bitmap_[index / 8];
+  return (bits & (1 << (index % 8))) != 0;
+}
+
 void Bitmap::set_bit(int index)
 {
   char &bits = bitmap_[index / 8];
@@ -63,6 +69,11 @@ void Bitmap::clear_bit(int index)
 {
   char &bits = bitmap_[index / 8];
   bits &= ~(1 << (index % 8));
+}
+
+void Bitmap::clear_bits()
+{
+  memset(bitmap_, 0, size_);
 }
 
 int Bitmap::next_unsetted_bit(int start)

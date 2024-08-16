@@ -19,6 +19,7 @@ See the Mulan PSL v2 for more details. */
 #include <vector>
 
 #include "common/log/log.h"
+#include "common/lang/bitmap.h"
 #include "sql/expr/expression.h"
 #include "sql/expr/tuple_cell.h"
 #include "sql/parser/parse.h"
@@ -171,7 +172,14 @@ public:
     speces_.clear();
   }
 
-  void set_record(Record *record) { this->record_ = record; }
+  void set_record(Record *record) 
+  { 
+    this->record_ = record; 
+    const FieldMeta *null_field = speces_.front()->field().meta();
+    ASSERT(nullptr != null_field && AttrType::CHARS == null_field->type(), "RowTuple get null field failed!");
+    // 获取record行组的头部分，记录各个字段的null情况
+    bitmap_.init(record->data() + null_field->offset(), null_field->len());
+  }
 
   void set_schema(const Table *table, const std::vector<FieldMeta> *fields)
   {
@@ -194,10 +202,15 @@ public:
       return RC::INVALID_ARGUMENT;
     }
 
-    FieldExpr       *field_expr = speces_[index];
-    const FieldMeta *field_meta = field_expr->field().meta();
-    cell.set_type(field_meta->type());
-    cell.set_data(this->record_->data() + field_meta->offset(), field_meta->len());
+    if (bitmap_.get_bit(index)) {
+      cell.set_null();
+    } else {
+      FieldExpr       *field_expr = speces_[index];
+      const FieldMeta *field_meta = field_expr->field().meta();
+      cell.set_type(field_meta->type());
+      cell.set_data(this->record_->data() + field_meta->offset(), field_meta->len());
+    }
+
     return RC::SUCCESS;
   }
 
@@ -245,6 +258,7 @@ public:
 private:
   Record                  *record_ = nullptr;
   const Table             *table_  = nullptr;
+  common::Bitmap           bitmap_;
   std::vector<FieldExpr *> speces_;
 };
 

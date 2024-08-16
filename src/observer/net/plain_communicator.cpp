@@ -236,6 +236,7 @@ RC PlainCommunicator::write_result_internal(SessionEvent *event, bool &need_disc
     }
   }
 
+  // 写正式结果，涉及火山模型的operator计算过程
   rc = RC::SUCCESS;
   if (event->session()->get_execution_mode() == ExecutionMode::CHUNK_ITERATOR
       && event->session()->used_chunk_mode()) {
@@ -277,6 +278,8 @@ RC PlainCommunicator::write_tuple_result(SqlResult *sql_result)
   while (RC::SUCCESS == (rc = sql_result->next_tuple(tuple))) {
     assert(tuple != nullptr);
 
+    // 这里index是不是忽略了一个问题
+    // 如果没有mvcc事务处理的情况下，这里是正确的，否则需要跳过事务字段？
     int cell_num = tuple->cell_num();
     for (int i = 0; i < cell_num; i++) {
       if (i != 0) {

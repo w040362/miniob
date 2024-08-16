@@ -129,6 +129,20 @@ ComparisonExpr::~ComparisonExpr() {}
 RC ComparisonExpr::compare_value(const Value &left, const Value &right, bool &result) const
 {
   RC  rc         = RC::SUCCESS;
+  // processing null
+  if (comp_ == IS_NULL || comp_ == IS_NOT_NULL) {
+    // yacc.y right_value->set_null()
+    ASSERT(right.is_null(), "IS_[NOT_]NULL has null for right value");
+    if (comp_ == IS_NULL) { result = left.is_null(); } 
+    else { result = !left.is_null(); }
+    return rc;
+  }
+  if (left.is_null() || right.is_null()) {
+    // 任何数值与null比较都是false
+    result = false;
+    return rc;
+  }
+
   int cmp_result = left.compare(right);
   result         = false;
   switch (comp_) {

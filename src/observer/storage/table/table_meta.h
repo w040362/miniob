@@ -50,6 +50,7 @@ public:
   const FieldMeta    *field(int index) const;
   const FieldMeta    *field(const char *name) const;
   const FieldMeta    *find_field_by_offset(int offset) const;
+  const FieldMeta    *get_null_field() const;
   auto                field_metas() const -> const std::vector<FieldMeta>                *{ return &fields_; }
   auto                trx_fields() const -> std::span<const FieldMeta>;
   const StorageFormat storage_format() const { return storage_format_; }
@@ -78,6 +79,7 @@ protected:
   std::vector<FieldMeta> fields_;  // 包含sys_fields
   std::vector<IndexMeta> indexes_;
   StorageFormat          storage_format_;
+  FieldMeta              null_field_;
 
   int record_size_ = 0;
 };

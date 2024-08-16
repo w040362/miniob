@@ -61,13 +61,31 @@ RC TableMeta::init(int32_t table_id, const char *name, const std::vector<FieldMe
   int field_offset  = 0;
   int trx_field_num = 0;
 
+  /*
+    fields_分为三个部分
+    1: __null，每个field使用 1-bit 记录该字段是否为null
+    2: trx事务相关meta字段, 目前长度恒为0，没有相关记录
+    3: 表属性相关meta字段
+  */ 
+
+  if (trx_fields != nullptr) {
+    trx_field_num = static_cast<int>(trx_fields->size());
+  }
+  int sys_field_num = trx_field_num + 1; // __null
+  fields_.resize(attributes.size() + sys_field_num);
+
+  // __null, offset=0
+  int null_len = (sys_field_num + attributes.size() + 7) / 8; // one field one bit
+  fields_[0] = FieldMeta("__null", AttrType::CHARS, field_offset, null_len, false, false);
+  field_offset += null_len;
+
   if (trx_fields != nullptr) {
     trx_fields_ = *trx_fields;
 
     fields_.resize(attributes.size() + trx_fields->size());
     for (size_t i = 0; i < trx_fields->size(); i++) {
       const FieldMeta &field_meta = (*trx_fields)[i];
-      fields_[i] = FieldMeta(field_meta.name(), field_meta.type(), field_offset, field_meta.len(), false /*visible*/, field_meta.field_id());
+      fields_[i + 1] = FieldMeta(field_meta.name(), field_meta.type(), field_offset, field_meta.len(), false /*visible*/, field_meta.field_id(), field_meta.nullable());
       field_offset += field_meta.len();
     }
 
@@ -80,7 +98,7 @@ RC TableMeta::init(int32_t table_id, const char *name, const std::vector<FieldMe
     const AttrInfoSqlNode &attr_info = attributes[i];
     // `i` is the col_id of fields[i]
     rc = fields_[i + trx_field_num].init(
-      attr_info.name.c_str(), attr_info.type, field_offset, attr_info.length, true /*visible*/, i);
+      attr_info.name.c_str(), attr_info.type, field_offset, attr_info.length, true /*visible*/, i, attr_info.nullable);
     if (OB_FAIL(rc)) {
       LOG_ERROR("Failed to init field meta. table name=%s, field name: %s", name, attr_info.name.c_str());
       return rc;
@@ -89,6 +107,7 @@ RC TableMeta::init(int32_t table_id, const char *name, const std::vector<FieldMe
     field_offset += attr_info.length;
   }
 
+  // 一行记录占用的总空间，定长记录
   record_size_ = field_offset;
 
   table_id_ = table_id;
@@ -165,6 +184,11 @@ const IndexMeta *TableMeta::index(int i) const { return &indexes_[i]; }
 int TableMeta::index_num() const { return indexes_.size(); }
 
 int TableMeta::record_size() const { return record_size_; }
+
+const FieldMeta *TableMeta::get_null_field() const
+{
+  return &fields_[0];
+}
 
 int TableMeta::serialize(std::ostream &ss) const
 {

@@ -20,11 +20,11 @@ See the Mulan PSL v2 for more details. */
 #include <sstream>
 #include "value.h"
 
-const char *ATTR_TYPE_NAME[] = {"undefined", "chars", "ints", "floats", "dates", "booleans"};
+const char *ATTR_TYPE_NAME[] = {"undefined", "chars", "ints", "floats", "dates", "nulls", "booleans"};
 
 const char *attr_type_to_string(AttrType type)
 {
-  if (type >= AttrType::UNDEFINED && type <= AttrType::DATES) {
+  if (type >= AttrType::UNDEFINED && type <= AttrType::NULLS) {
     return ATTR_TYPE_NAME[static_cast<int>(type)];
   }
   return "unknown";
@@ -109,6 +109,9 @@ void Value::set_date(int val) {
   num_value_.int_value_ = val;
   length_ = sizeof(val);
 }
+void Value::set_null() {
+  attr_type_ = AttrType::NULLS;
+}
 
 void Value::set_value(const Value &value)
 {
@@ -125,6 +128,9 @@ void Value::set_value(const Value &value)
     case AttrType::DATES: {
       set_date(value.get_int());
     } break;
+    case AttrType::NULLS: {
+      set_null();
+    } break;
     case AttrType::BOOLEANS: {
       set_boolean(value.get_boolean());
     } break;
@@ -133,6 +139,8 @@ void Value::set_value(const Value &value)
     } break;
   }
 }
+
+bool Value::is_null() const { return attr_type_ == AttrType::NULLS; }
 
 const char *Value::data() const
 {
@@ -165,6 +173,9 @@ std::string Value::to_string() const
     case AttrType::DATES: {
       os << date_to_string(num_value_.int_value_);
     } break;
+    case AttrType::NULLS: {
+      os << "NULL";
+    } break;
     default: {
       LOG_WARN("unsupported attr type: %d", attr_type_);
     } break;
@@ -174,6 +185,7 @@ std::string Value::to_string() const
 
 int Value::compare(const Value &other) const
 {
+  ASSERT(!this->is_null() && !other.is_null(), "Value to be compared can not be null!");
   if (this->attr_type_ == other.attr_type_) {
     switch (this->attr_type_) {
       case AttrType::INTS: {
@@ -211,6 +223,7 @@ int Value::compare(const Value &other) const
 
 int Value::get_int() const
 {
+  ASSERT(attr_type_ != AttrType::DATES, "date can not get_int()");
   switch (attr_type_) {
     case AttrType::CHARS: {
       try {
@@ -228,9 +241,6 @@ int Value::get_int() const
     }
     case AttrType::BOOLEANS: {
       return (int)(num_value_.bool_value_);
-    } break;
-    case AttrType::DATES: {
-      return (int)(num_value_.int_value_);
     } break;
     default: {
       LOG_WARN("unknown data type. type=%d", attr_type_);

@@ -108,6 +108,14 @@ UnboundAggregateExpr *create_aggregate_expression(const char *aggregate_name,
         EXPLAIN
         STORAGE
         FORMAT
+        AGGR_MAX
+        AGGR_MIN
+        AGGR_AVG
+        AGGR_SUM
+        AGGR_COUNT
+        IS
+        NOT
+        NULL_T
         EQ
         LT
         GT
@@ -158,6 +166,8 @@ UnboundAggregateExpr *create_aggregate_expression(const char *aggregate_name,
 %type <string>              storage_format
 %type <relation_list>       rel_list
 %type <expression>          expression
+%type <expression>          aggr_func_expr
+%type <number>              aggr_func_type
 %type <expression_list>     expression_list
 %type <expression_list>     group_by
 %type <sql_node>            calc_stmt
@@ -346,6 +356,27 @@ attr_def:
       $$->type = (AttrType)$2;
       $$->name = $1;
       $$->length = $4;
+      $$->nullable = false;
+      free($1);
+    }
+    |
+    ID type LBRACE number RBRACE NOT NULL_T
+    {
+      $$ = new AttrInfoSqlNode;
+      $$->type = (AttrType)$2;
+      $$->name = $1;
+      $$->length = $4;
+      $$->nullable = false;
+      free($1);
+    }
+    |
+    ID type LBRACE number RBRACE NULL_T
+    {
+      $$ = new AttrInfoSqlNode;
+      $$->type = (AttrType)$2;
+      $$->name = $1;
+      $$->length = $4;
+      $$->nullable = true;
       free($1);
     }
     | ID type
@@ -354,6 +385,25 @@ attr_def:
       $$->type = (AttrType)$2;
       $$->name = $1;
       $$->length = 4;
+      $$->nullable = false;
+      free($1);
+    }
+    | ID type NOT NULL_T
+    {
+      $$ = new AttrInfoSqlNode;
+      $$->type = (AttrType)$2;
+      $$->name = $1;
+      $$->length = 4;
+      $$->nullable = false;
+      free($1);
+    }
+    | ID type NULL_T
+    {
+      $$ = new AttrInfoSqlNode;
+      $$->type = (AttrType)$2;
+      $$->name = $1;
+      $$->length = 4;
+      $$->nullable = true;
       free($1);
     }
     ;
@@ -426,6 +476,10 @@ value:
       $$ = new Value(tmp);
       free(tmp);
       free($1);
+    }
+    |NULL_T {
+      $$ = new Value();
+      $$->set_null();
     }
     ;
 storage_format:
@@ -550,9 +604,50 @@ expression:
     | '*' {
       $$ = new StarExpr();
     }
+    | aggr_func_expr {
+      $$ = $1;
+    }
     // your code here
     ;
-
+aggr_func_type:
+    AGGR_MAX {
+      $$ = AggregateExpr::Type::MAX;
+    }
+    | AGGR_MIN {
+      $$ = AggregateExpr::Type::MIN;
+    }
+    | AGGR_SUM {
+      $$ = AggregateExpr::Type::SUM;
+    }
+    | AGGR_AVG {
+      $$ = AggregateExpr::Type::AVG;
+    }
+    | AGGR_COUNT {
+      $$ = AggregateExpr::Type::COUNT;
+    }
+    ;
+aggr_func_expr:
+    aggr_func_type LBRACE expression RBRACE
+    {
+      AggrFuncType funtype = (AggrFuncType)$1;
+      AggrFuncExpr *afexpr = new AggregateExpr(funtype, $3);
+      $$ = afexpr;
+      $$->set_name(token_name(sql_string, &@$));
+    }
+    | aggr_func_type LBRACE '*' RBRACE
+    {
+      if($1 != AggrFuncType::AGG_COUNT) {
+        yyerror(&@$, sql_string, sql_result, scanner, "only support count(*)");
+        YYERROR;
+      }
+      // regard count(*) as count(1)
+      AggrFuncType funtype = (AggrFuncType)$1;
+      AggrFuncExpr *afexpr = new AggrFuncExpr(funtype, new ValueExpr(Value(1)));
+      // afexpr->set_param_constexpr(true);
+      $$ = afexpr;
+      $$->set_name(token_name(sql_string, &@$));
+    }
+    ;
 rel_attr:
     ID {
       $$ = new RelAttrSqlNode;
@@ -664,6 +759,43 @@ condition:
 
       delete $1;
       delete $3;
+    }
+    | rel_attr IS NOT NULL_T
+    {
+      $$ = new ConditionSqlNode;
+      $$->left_is_attr = 1;
+      $$->left_attr = *$1;
+      $$->right_is_attr = 0;
+      $$->right_value->set_null();
+      $$->comp = Comp::IS_NOT_NULL;
+      delete $1;
+    }
+    | rel_attr IS NULL_T
+    {
+      $$ = new ConditionSqlNode;
+      $$->left_is_attr = 1;
+      $$->left_attr = *$1;
+      $$->right_is_attr = 0;
+      $$->right_value->set_null();
+      $$->comp = Comp::IS_NULL;
+    }
+    | value IS NOT NULL_T
+    {
+      $$ = new ConditionSqlNode;
+      $$->left_is_attr = 0;
+      $$->left_attr = *$1;
+      $$->right_is_attr = 0;
+      $$->right_value->set_null();
+      $$->comp = Comp::IS_NOT_NULL;
+    }
+    | value IS NULL_T
+    {
+      $$ = new ConditionSqlNode;
+      $$->left_is_attr = 0;
+      $$->left_attr = *$1;
+      $$->right_is_attr = 0;
+      $$->right_value->set_null();
+      $$->comp = Comp::IS_NULL;
     }
     ;
 
