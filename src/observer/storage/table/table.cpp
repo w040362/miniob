@@ -273,6 +273,10 @@ RC Table::make_record(int value_num, const Value *values, Record &record)
                 table_meta_.name(), field->name());
       return RC::INSERT_NULL_ERROR;
     }
+    if (value.is_null() && field->nullable()) {
+      continue;
+    }
+    
     if (field->type() != value.attr_type()) {
       LOG_ERROR("Invalid value type. table name =%s, field name=%s, type=%d, but given=%d",
                 table_meta_.name(), field->name(), field->type(), value.attr_type());

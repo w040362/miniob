@@ -81,23 +81,20 @@ RC TableMeta::init(int32_t table_id, const char *name, const std::vector<FieldMe
 
   if (trx_fields != nullptr) {
     trx_fields_ = *trx_fields;
-
-    fields_.resize(attributes.size() + trx_fields->size());
     for (size_t i = 0; i < trx_fields->size(); i++) {
       const FieldMeta &field_meta = (*trx_fields)[i];
       fields_[i + 1] = FieldMeta(field_meta.name(), field_meta.type(), field_offset, field_meta.len(), false /*visible*/, field_meta.field_id(), field_meta.nullable());
       field_offset += field_meta.len();
     }
-
-    trx_field_num = static_cast<int>(trx_fields->size());
-  } else {
-    fields_.resize(attributes.size());
-  }
+  } // ?? 
+  // else {
+  //   fields_.resize(attributes.size());
+  // }
 
   for (size_t i = 0; i < attributes.size(); i++) {
     const AttrInfoSqlNode &attr_info = attributes[i];
     // `i` is the col_id of fields[i]
-    rc = fields_[i + trx_field_num].init(
+    rc = fields_[i + sys_field_num].init(
       attr_info.name.c_str(), attr_info.type, field_offset, attr_info.length, true /*visible*/, i, attr_info.nullable);
     if (OB_FAIL(rc)) {
       LOG_ERROR("Failed to init field meta. table name=%s, field name: %s", name, attr_info.name.c_str());
@@ -157,7 +154,7 @@ const FieldMeta *TableMeta::find_field_by_offset(int offset) const
 }
 int TableMeta::field_num() const { return fields_.size(); }
 
-int TableMeta::sys_field_num() const { return static_cast<int>(trx_fields_.size()); }
+int TableMeta::sys_field_num() const { return static_cast<int>(trx_fields_.size()) + 1; /* __null */ }
 
 const IndexMeta *TableMeta::index(const char *name) const
 {
