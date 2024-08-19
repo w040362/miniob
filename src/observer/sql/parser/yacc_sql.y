@@ -609,6 +609,16 @@ aggr_expression:
       $$ = create_aggregate_expression($1, $3, sql_string, &@$);
       free($1);
     }
+    | ID LBRACE expression COMMA expression_list RBRACE
+    {
+      yyerror(&@$,sql_string,sql_result,scanner,"aggr_func invalid",true);
+      YYERROR;
+    }
+    | ID LBRACE RBRACE
+    {
+      yyerror(&@$,sql_string,sql_result,scanner,"aggr_func invalid",true);
+      YYERROR;
+    }
     ;
 rel_attr:
     ID {

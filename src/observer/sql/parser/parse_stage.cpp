@@ -54,6 +54,7 @@ RC ParseStage::handle_request(SQLStageEvent *sql_event)
     sql_result->set_return_code(rc);
     if (sql_node->error.flag) {
       // 处理违规日期，输出FAILURE
+      // 处理违规aggregate, AGG()/AGG(c1,c2)
       sql_result->set_state_string("");
     } else {
       // parse error
