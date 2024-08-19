@@ -52,6 +52,33 @@ public:
 
   Value(const Value &other)            = default;
   Value &operator=(const Value &other) = default;
+  Value &operator=(const Value *other)
+  {
+    if (this != other) {
+      attr_type_ = other->attr_type_;
+      length_ = other->length_;
+      str_value_ = other->str_value_;
+
+      // 根据类型拷贝union的值
+      switch (attr_type_) {
+        case AttrType::INTS:
+          num_value_.int_value_ = other->num_value_.int_value_;
+          break;
+        case AttrType::FLOATS:
+          num_value_.float_value_ = other->num_value_.float_value_;
+          break;
+        case AttrType::BOOLEANS:
+          num_value_.bool_value_ = other->num_value_.bool_value_;
+          break;
+        case AttrType::DATES:
+          num_value_.int_value_ = other->num_value_.int_value_;
+        default:
+          // 处理其他类型或UNDEFINED类型
+          break;
+      }
+    }
+    return *this;
+  }
 
   void set_type(AttrType type) { this->attr_type_ = type; }
   void set_data(char *data, int length);
