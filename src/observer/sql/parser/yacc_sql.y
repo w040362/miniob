@@ -611,11 +611,15 @@ aggr_expression:
     }
     | ID LBRACE expression COMMA expression_list RBRACE
     {
+      // sum(c1, c2)
+      // output FAILURE, not Failed to parse
       yyerror(&@$,sql_string,sql_result,scanner,"aggr_func invalid",true);
       YYERROR;
     }
     | ID LBRACE RBRACE
     {
+      // sum()
+      // output FAILURE, not Failed to parse
       yyerror(&@$,sql_string,sql_result,scanner,"aggr_func invalid",true);
       YYERROR;
     }
