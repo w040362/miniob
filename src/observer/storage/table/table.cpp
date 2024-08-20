@@ -495,9 +495,6 @@ RC Table::update_record(Record &record, std::vector<Value*> &values, std::vector
     return rc;
   }
 
-  int       field_offset   = -1;
-  int       field_length   = -1;
-  int       field_index    = -1;
   const int sys_field_num  = table_meta_.sys_field_num();
   const int user_field_num = table_meta_.field_num() - sys_field_num;
 
@@ -513,6 +510,10 @@ RC Table::update_record(Record &record, std::vector<Value*> &values, std::vector
   // });
 
   for (size_t i = 0; i < fields.size(); i++) {
+    int field_offset = -1;
+    int field_length = -1;
+    int field_index  = -1;
+
     // 处理第i个update值
     Value *update_value = values[i];
     FieldMeta *update_field = fields[i];
