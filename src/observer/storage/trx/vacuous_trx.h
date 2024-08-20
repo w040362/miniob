@@ -46,6 +46,7 @@ public:
 
   RC insert_record(Table *table, Record &record) override;
   RC delete_record(Table *table, Record &record) override;
+  // RC update_record(Table *table, Record &record, std::vector<Value> &values, std::vector<FieldMeta> &fields) override;
   RC visit_record(Table *table, Record &record, ReadWriteMode mode) override;
   RC start_if_need() override;
   RC commit() override;

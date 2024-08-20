@@ -484,6 +484,122 @@ RC Table::delete_record(const Record &record)
   return rc;
 }
 
+RC Table::update_record(Record &record, std::vector<Value*> &values, std::vector<FieldMeta*> &fields)
+{
+  RC rc = RC::SUCCESS;
+  if (values.size() != fields.size() || values.size() == 0) {
+    rc = RC::INVALID_ARGUMENT;
+    LOG_WARN("fields size not match values, or empty param");
+    return rc;
+  }
+
+  int       field_offset   = -1;
+  int       field_length   = -1;
+  int       field_index    = -1;
+  const int sys_field_num  = table_meta_.sys_field_num();
+  const int user_field_num = table_meta_.field_num() - sys_field_num;
+
+  int record_size = table_meta_.record_size();
+  char *old_data = record.data();                        // old_data不能释放，其指向的是frame中的内存
+  char *data     = new char[record_size];  // new_record->data
+  memcpy(data, old_data, record_size);
+
+  for (size_t i = 0; i < fields.size(); i++) {
+    // 处理第i个update值
+    Value *update_value = values[i];
+    FieldMeta *update_field = fields[i];
+    
+    for (int j = 0; j < user_field_num; j++) {
+      const FieldMeta *field_meta = table_meta_.field(j + sys_field_num);
+      const char *field_name = field_meta->name();
+      // 寻找相等的field
+      // TODO!! where is update_file?
+      if (strcmp(field_name, update_field->name()) != 0) {
+        continue;
+      }
+      AttrType attr_type  = field_meta->type();
+      AttrType value_type = update_value->attr_type();
+      // 判断value是否合法
+      if (update_value->is_null() && field_meta->nullable()) {
+        // ok
+      } else if (attr_type != value_type) {
+        LOG_WARN("field type mismatch. table=%s, field=%s, field type=%d, value_type=%d",
+            name(), field_meta->name(), attr_type, value_type);
+        return RC::SCHEMA_FIELD_TYPE_MISMATCH;
+      }
+      field_offset = field_meta->offset();
+      field_length = field_meta->len();
+      field_index = j + sys_field_num;
+      break;
+    }
+
+    if (field_length < 0 || field_offset < 0) {
+      LOG_WARN("field not find ,field name = %s", update_field->name());
+      return RC::SCHEMA_FIELD_NOT_EXIST;
+    }
+
+    // 写入新的值
+    const FieldMeta* null_field = table_meta_.get_null_field();
+    common::Bitmap new_null_bitmap(data + null_field->offset(), table_meta_.field_num());
+    if (update_value->is_null()) {
+      new_null_bitmap.set_bit(field_index);
+    } else {
+      new_null_bitmap.clear_bit(field_index);
+      memcpy(data + field_offset, update_value->data(), field_length);   
+    }
+
+    rc = delete_entry_of_indexes(old_data, record.rid(), false);
+    if (rc != RC::SUCCESS) {
+      LOG_ERROR("Failed to delete indexes of record");
+      return rc;
+    }
+
+    rc = record_handler_->visit_record(record.rid(),
+                  [&data, record_size](Record &record) {
+                    memcpy(record.data(), data, record_size);
+                    return true;
+                  });
+    if (rc != RC::SUCCESS) {
+      LOG_ERROR("Failed to update record");
+      return rc;
+    }
+
+    rc = insert_entry_of_indexes(record.data(), record.rid());
+    if (rc != RC::SUCCESS) {
+      LOG_ERROR("Failed to create indexes of record");
+      return rc;
+    }
+
+    record.set_data(data);
+    return rc;
+  }
+
+  /*
+  case 1: {  // update
+    int    suffix     = record_suffix_random.next();
+    string new_record = string(record_data) + to_string(suffix);
+
+    record_map_lock.lock();
+    IntegerGenerator record_random(0, record_map.size() - 1);
+    auto             iter = record_map.begin();
+    advance(iter, record_random.next());
+    RID rid = iter->first;
+    ASSERT_EQ(record_file_handler.visit_record(rid,
+                  [&new_record](Record &record) {
+                    memcpy(record.data(), new_record.c_str(), new_record.size());
+                    return true;
+                  }),
+        RC::SUCCESS);
+
+    record_map[rid] = new_record;
+    record_map_lock.unlock();
+
+    break;
+  }
+  */
+  return rc;
+}
+
 RC Table::insert_entry_of_indexes(const char *record, const RID &rid)
 {
   RC rc = RC::SUCCESS;

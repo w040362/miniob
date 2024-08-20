@@ -80,6 +80,7 @@ public:
   RC insert_record(Record &record);
   RC delete_record(const Record &record);
   RC delete_record(const RID &rid);
+  RC update_record(Record &record, std::vector<Value*> &values, std::vector<FieldMeta*> &fields);
   RC get_record(const RID &rid, Record &record);
 
   RC recover_insert_record(Record &record);
