@@ -566,6 +566,12 @@ RC Table::update_record(Record &record, std::vector<Value*> &values, std::vector
     return rc;
   }
 
+  rc = insert_entry_of_indexes(record.data(), record.rid());
+  if (rc != RC::SUCCESS) {
+    LOG_ERROR("Failed to create indexes of record");
+    return rc;
+  }
+
   rc = record_handler_->visit_record(record.rid(),
                 [&data, record_size](Record &record) {
                   memcpy(record.data(), data, record_size);
@@ -575,13 +581,6 @@ RC Table::update_record(Record &record, std::vector<Value*> &values, std::vector
     LOG_ERROR("Failed to update record");
     return rc;
   }
-
-  rc = insert_entry_of_indexes(record.data(), record.rid());
-  if (rc != RC::SUCCESS) {
-    LOG_ERROR("Failed to create indexes of record");
-    return rc;
-  }
-
   /*
   case 1: {  // update
     int    suffix     = record_suffix_random.next();
@@ -605,6 +604,10 @@ RC Table::update_record(Record &record, std::vector<Value*> &values, std::vector
     break;
   }
   */
+
+  // delete [] data;
+  // data = nullptr;
+  // record.set_data(old_data);
   return rc;
 }
 
