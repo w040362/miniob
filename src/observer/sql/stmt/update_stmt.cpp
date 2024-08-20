@@ -60,10 +60,12 @@ RC UpdateStmt::create(Db *db, UpdateSqlNode &update, Stmt *&stmt)
   }
 
   if (field_meta->type() == update.value.attr_type()) {
-    if (field_meta->type() == AttrType::CHARS && field_meta->len() < update.value.length()) {
+    if (field_meta->type() == AttrType::CHARS && field_meta->len() <= update.value.length()) {
       // 检查字符串长度
       return RC::INVALID_ARGUMENT;
     }
+  } else if (update.value.attr_type() == AttrType::NULLS && field_meta->nullable()) {
+    // ok
   } else {
     LOG_WARN("update field type mismatch. table=%s",table_name);
     return RC::INVALID_ARGUMENT;

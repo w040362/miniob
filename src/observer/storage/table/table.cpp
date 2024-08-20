@@ -527,11 +527,6 @@ RC Table::update_record(Record &record, std::vector<Value*> &values, std::vector
             name(), field_meta->name(), attr_type, value_type);
         return RC::SCHEMA_FIELD_TYPE_MISMATCH;
       } 
-      if (value_type == AttrType::CHARS && field_meta->len() <= update_value->length()) {
-        LOG_WARN("char value is too long. table=%s, field=%s, value=%s",
-            name(), field_meta->name(), update_value->to_string().c_str());
-        return RC::INVALID_ARGUMENT;
-      }
       field_offset = field_meta->offset();
       field_length = field_meta->len();
       field_index = j + sys_field_num;
