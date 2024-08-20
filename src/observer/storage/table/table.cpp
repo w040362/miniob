@@ -558,7 +558,7 @@ RC Table::update_record(Record &record, std::vector<Value*> &values, std::vector
     }
   }
 
-  record.set_data(data);
+  // record.set_data(data);
 
   rc = delete_entry_of_indexes(old_data, record.rid(), false);
   if (rc != RC::SUCCESS) {
@@ -566,8 +566,19 @@ RC Table::update_record(Record &record, std::vector<Value*> &values, std::vector
     return rc;
   }
 
-  rc = insert_entry_of_indexes(record.data(), record.rid());
+  rc = insert_entry_of_indexes(data, record.rid());
   if (rc != RC::SUCCESS) {
+    // rollback
+    RC rc2 = delete_entry_of_indexes(data, record.rid(), false /*error_on_not_exists*/);
+    if (rc2 != RC::SUCCESS) {
+      LOG_ERROR("Failed to rollback index data when insert index entries failed. table name=%s, rc=%d:%s",
+                name(), rc2, strrc(rc2));
+    }
+    rc2 = insert_entry_of_indexes(old_data, record.rid());
+    if (rc2 != RC::SUCCESS) {
+      LOG_ERROR("Failed to rollback index data when insert index entries failed. table name=%s, rc=%d:%s",
+                name(), rc2, strrc(rc2));
+    }
     LOG_ERROR("Failed to create indexes of record");
     return rc;
   }
@@ -605,6 +616,8 @@ RC Table::update_record(Record &record, std::vector<Value*> &values, std::vector
   }
   */
 
+  // 这里解决了update测试用例的超时问题
+  // Failed to receive response from server
   delete [] data;
   data = nullptr;
   record.set_data(old_data);
