@@ -605,9 +605,9 @@ RC Table::update_record(Record &record, std::vector<Value*> &values, std::vector
   }
   */
 
-  // delete [] data;
-  // data = nullptr;
-  // record.set_data(old_data);
+  delete [] data;
+  data = nullptr;
+  record.set_data(old_data);
   return rc;
 }
 
