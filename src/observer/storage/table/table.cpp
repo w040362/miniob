@@ -31,6 +31,8 @@ See the Mulan PSL v2 for more details. */
 #include "storage/table/table.h"
 #include "storage/trx/trx.h"
 
+// #include "common/lang/defer.h"
+
 Table::~Table()
 {
   if (record_handler_ != nullptr) {
@@ -504,6 +506,12 @@ RC Table::update_record(Record &record, std::vector<Value*> &values, std::vector
   char *data     = new char[record_size];  // new_record->data
   memcpy(data, old_data, record_size);
 
+  // DEFER([&](){
+  //   delete [] data;
+  //   data = nullptr;
+  //   record.set_data(old_data);
+  // });
+
   for (size_t i = 0; i < fields.size(); i++) {
     // 处理第i个update值
     Value *update_value = values[i];
@@ -547,30 +555,29 @@ RC Table::update_record(Record &record, std::vector<Value*> &values, std::vector
       new_null_bitmap.clear_bit(field_index);
       memcpy(data + field_offset, update_value->data(), field_length);   
     }
+  }
 
-    rc = delete_entry_of_indexes(old_data, record.rid(), false);
-    if (rc != RC::SUCCESS) {
-      LOG_ERROR("Failed to delete indexes of record");
-      return rc;
-    }
+  record.set_data(data);
 
-    rc = record_handler_->visit_record(record.rid(),
-                  [&data, record_size](Record &record) {
-                    memcpy(record.data(), data, record_size);
-                    return true;
-                  });
-    if (rc != RC::SUCCESS) {
-      LOG_ERROR("Failed to update record");
-      return rc;
-    }
+  rc = delete_entry_of_indexes(old_data, record.rid(), false);
+  if (rc != RC::SUCCESS) {
+    LOG_ERROR("Failed to delete indexes of record");
+    return rc;
+  }
 
-    rc = insert_entry_of_indexes(record.data(), record.rid());
-    if (rc != RC::SUCCESS) {
-      LOG_ERROR("Failed to create indexes of record");
-      return rc;
-    }
+  rc = record_handler_->visit_record(record.rid(),
+                [&data, record_size](Record &record) {
+                  memcpy(record.data(), data, record_size);
+                  return true;
+                });
+  if (rc != RC::SUCCESS) {
+    LOG_ERROR("Failed to update record");
+    return rc;
+  }
 
-    record.set_data(data);
+  rc = insert_entry_of_indexes(record.data(), record.rid());
+  if (rc != RC::SUCCESS) {
+    LOG_ERROR("Failed to create indexes of record");
     return rc;
   }
 

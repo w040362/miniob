@@ -60,7 +60,7 @@ RC UpdateStmt::create(Db *db, UpdateSqlNode &update, Stmt *&stmt)
   }
 
   if (field_meta->type() == update.value.attr_type()) {
-    if (field_meta->type() == AttrType::CHARS && field_meta->len() <= update.value.length()) {
+    if (field_meta->type() == AttrType::CHARS && field_meta->len() < update.value.length()) {
       // 检查字符串长度
       return RC::INVALID_ARGUMENT;
     }
