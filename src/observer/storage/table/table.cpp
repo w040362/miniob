@@ -618,9 +618,11 @@ RC Table::update_record(Record &record, std::vector<Value*> &values, std::vector
 
   // 这里解决了update测试用例的超时问题
   // Failed to receive response from server
+  // 问题：1.为什么不可以仅delete data, 但是不set old_data, 看起来后续不再使用这个record 2.如何不删除data, 那么不set record
+  // 3. 能否将old_data释放
   delete [] data;
   data = nullptr;
-  record.set_data(old_data);
+  // record.set_data(old_data);
   return rc;
 }
 
